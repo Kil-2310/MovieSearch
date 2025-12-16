@@ -7,17 +7,18 @@ else:
     load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+API_TOKEN = os.getenv("API_TOKEN")
+
+SERVER_URL = 'https://api.poiskkino.dev'
 DATE_FORMAT = "%d.%m.%Y"
 DB_PATH = "database.db"
 
 DEFAULT_COMMANDS = (
     ("start", "Запустить бота"),
     ("help", "Вывести справку"),
-    ("history", "Вывести историю запросов"),
-    ("ask_giga_chat", "Задать вопрос нейросети"),
     ("movie_search", "Поиск фильма/сериала по названию"),
-    ("movie_by_rating", "Поиск фильмов/сериалов по рейтингу"),
-    ("low_budget_movie", "Поиск фильмов/сериалов с низким бюджетом"),
-    ("high_budget_movie", "Поиск фильмов/сериалов с высоким бюджетом"),
-    ("get_my_top_10", "Получить мой топ 10")
+    ("movies_by_rating", "Поиск фильмов/сериалов по рейтингу"),
+    ("movie_by_budget", "Поиск фильмов/сериалов по бюджету")
 )
+    # ("history", "Вывести историю запросов"),
+    # ("ask_giga_chat", "Задать вопрос нейросети"),
