@@ -82,8 +82,11 @@ class DataValidator:
             raise ValueError('Нет тире')
         
         part1, part2 = value.split('-')
-        part1 = float(part1)
-        part2 = float(part2)
+        try:
+            part1 = float(part1)
+            part2 = float(part2)
+        except ValueError:
+            raise ValueError('Ошибка формата данных')
         
         min_val, max_val = valid_range
         if not (min_val <= part1 <= max_val) or not (min_val <= part2 <= max_val):

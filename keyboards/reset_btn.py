@@ -1,9 +1,11 @@
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton,InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 def get_remove_btn():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton('🔄 Перезапустить бота'))
+
     return keyboard
+
 
 def get_amount_btn():
     keyboard = InlineKeyboardMarkup(row_width=3)

@@ -1,34 +1,54 @@
 import requests
-import json
-import sys
-from typing import Dict, Any, Optional, Tuple
-from pathlib import Path
+from typing import Dict, Any, List, Tuple
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from config_data.config import API_TOKEN, SERVER_URL
+# from config_data.config import API_TOKEN, SERVER_URL
 from typing import Callable
+BOT_TOKEN = '8528315371:AAF9PiqUBEhjgUTU9VpQbS6LL0LkARGGS4M'
+API_TOKEN = 'QR6BNFX-7YC4D2M-HWENZ72-SFJRKAH'
+SERVER_URL = 'https://api.poiskkino.dev'
 
 headers = {'X-API-KEY': API_TOKEN}
 
+def parse_film_data(film: Dict[str, Any]) -> Dict[str, Any]:
+    
+    return {
+        'id': film['id'],
+        'name': film['name'] if film['name'] is not None else film['alternativeName'],
+        'type': film['type'],
+        'year': film['year'],
+        'genres': [genre['name'] for genre in film.get('genres', [])],
+        'rating': film['rating']['kp'] if film.get('rating') and film['rating'].get('kp') is not None and film['rating']['kp'] != 0 else 'Отсутствует',
+        'description': film.get('description') if film.get('description') and film['description'] is not None else 'Отсутствует',
+        'poster': film['poster']['url'] if film.get('poster') and film['poster'].get('url') and film['poster']['url'] is not None else 'Отсутствует'
+    }
+
+
 def try_except_decorator(func: Callable) -> Callable:
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> Tuple[bool, Dict | List | None, str | None]:
         try:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            return True, result, None
         except requests.exceptions.RequestException as e:
-            print(f"Ошибка сети: {e}")
-            return None
+            error_msg = f"Ошибка сети: {e}"
+            print(error_msg)
+            return False, None, error_msg
         except (KeyError, IndexError) as e:
-            print(f"Ошибка данных: {e}")
-            return None
+            error_msg = f"Ошибка данных: {e}"
+            print(error_msg)
+            return False, None, error_msg
         except Exception as e:
-            print(f"Неожиданная ошибка: {e}")
-            return None
+            error_msg = f"Ошибка: {e}"
+            print(error_msg)
+            return False, None, error_msg
+        except ValueError as e:
+            error_msg = f"{e}"
+            print(error_msg)
+            return False, None, error_msg
     return wrapper
 
 
 @try_except_decorator
-def get_movie_by_name(name: str) -> Optional[Dict[str, Any]]:
+def get_movie_by_name(name: str) -> Dict[str, Any] | None:
 
     response = requests.get(
         f'{SERVER_URL}/v1.4/movie/search',
@@ -43,26 +63,13 @@ def get_movie_by_name(name: str) -> Optional[Dict[str, Any]]:
     data = response.json()
     
     if not data.get('docs'):
-        print(f"Фильм '{name}' не найден")
-        return None
-        
-    search_location = data['docs'][0]
-    
-    return {
-        'name': search_location.get('name'),
-        'year': search_location.get('year'),
-        'description': search_location.get('description'),
-        'age_rating': search_location.get('ageRating'),
-        'type': search_location.get('type'),
-        'id': search_location.get('id'),
-        'rating': search_location.get('rating', {}).get('kp'),
-        'genres': [genre.get('name') for genre in search_location.get('genres', [])],
-        'poster': search_location.get('poster', {}).get('url')
-    }
+        raise ValueError(f"Фильм '{name}' не найден")
+
+    return parse_film_data(data['docs'][0])
 
 
 @try_except_decorator
-def get_movies_by_rating(rating: str, amount: int = 10) -> list:
+def get_movie_by_rating(rating: str, amount: int = 10) -> List[Dict[str, Any]] | None:
     response = requests.get(
         f'{SERVER_URL}/v1.4/movie',
         params={
@@ -76,28 +83,13 @@ def get_movies_by_rating(rating: str, amount: int = 10) -> list:
     data = response.json()
     
     if not data.get('docs'):
-        print(f"Фильм с рейтингом {rating} не найден")
-        return None
+        raise ValueError(f"Фильм с рейтингом {rating} не найден")
     
-    total_films = list()
-
-    for film in data['docs']:
-        total_films.append({
-            'id': film['id'],
-            'name': film['name'] if film['name'] is not None else film['alternativeName'],
-            'type': film['type'],
-            'year': film['year'],
-            'genres': [genre['name'] for genre in film.get('genres', [])],
-            'rating': film['rating']['kp'] if film.get('rating') and film['rating'].get('kp') is not None and film['rating']['kp'] != 0 else 'Отсутствует',
-            'description': film.get('description') if film.get('description') and film['description'] is not None else 'Отсутствует',
-            'poster': film['poster']['url'] if film.get('poster') and film['poster'].get('url') and film['poster']['url'] is not None else 'Отсутствует'
-        })
-
-    return total_films
+    return [parse_film_data(film) for film in data['docs']]
 
 
 @try_except_decorator
-def get_movie_by_budget(budget: str, amount: int = 10) -> Optional[Dict[str, Any]]:
+def get_movie_by_budget(budget: str, amount: int = 10) -> List[Dict[str, Any]] | None:
     response = requests.get(
         f'{SERVER_URL}/v1.4/movie',
         params={
@@ -111,27 +103,12 @@ def get_movie_by_budget(budget: str, amount: int = 10) -> Optional[Dict[str, Any
     data = response.json()
 
     if not data.get('docs'):
-        print(f"Фильм с бюджетом {budget} не найден")
-        return None
+        raise ValueError(f"Фильм с бюджетом {budget} не найден")
 
-    total_films = list()
-
-    for film in data['docs']:
-        total_films.append({
-            'id': film['id'],
-            'name': film['name'] if film['name'] is not None else film['alternativeName'],
-            'type': film['type'],
-            'year': film['year'],
-            'genres': [genre['name'] for genre in film.get('genres', [])],
-            'rating': film['rating']['kp'] if film.get('rating') and film['rating'].get('kp') is not None and film['rating']['kp'] != 0 else 'Отсутствует',
-            'description': film.get('description') if film.get('description') and film['description'] is not None else 'Отсутствует',
-            'poster': film['poster']['url'] if film.get('poster') and film['poster'].get('url') and film['poster']['url'] is not None else 'Отсутствует'
-        })
-
-    return total_films
+    return [parse_film_data(film) for film in data['docs']]
 
 @try_except_decorator
-def get_random_movie() -> Optional[Dict[str, Any]]:
+def get_random_movie() -> Dict[str, Any] | None:
     response = requests.get(
         f'{SERVER_URL}/v1.4/movie/random',
         headers=headers
@@ -140,19 +117,10 @@ def get_random_movie() -> Optional[Dict[str, Any]]:
 
     data = response.json()
 
-    return {
-        'id': data['id'],
-        'name': data['name'] if data['name'] is not None else data['alternativeName'],
-        'type': data['type'],
-        'year': data['year'],
-        'genres': [genre['name'] for genre in data.get('genres', [])],
-        'rating': data['rating']['kp'] if data.get('rating') and data['rating'].get('kp') is not None and data['rating']['kp'] != 0 else 'Отсутствует',
-        'description': data.get('description') if data.get('description') and data['description'] is not None else 'Отсутствует',
-        'poster': data['poster']['url'] if data.get('poster') and data['poster'].get('url') and data['poster']['url'] is not None else 'Отсутствует'
-    }
+    return parse_film_data(data)
 
-
-def deep_search(rating: str, budget:str, amount: int = 10) -> Dict[str, Any]:
+@try_except_decorator
+def deep_search(rating: str, budget: str, amount: int = 1) -> List[Dict[str, Any]] | None:
     response = requests.get(
         f'{SERVER_URL}/v1.4/movie',
         params={
@@ -167,25 +135,16 @@ def deep_search(rating: str, budget:str, amount: int = 10) -> Dict[str, Any]:
     data = response.json()
 
     if not data.get('docs'):
-        print(f"Фильм с такими параметрами не найден")
-        return None
-    
-    total_films = list()
+        raise ValueError(f"Фильм с бюджетом {budget} и рейтингом {rating} не найден")
 
-    for film in data['docs']:
-        total_films.append({
-            'id': film['id'],
-            'name': film['name'] if film['name'] is not None else film['alternativeName'],
-            'type': film['type'],
-            'year': film['year'],
-            'genres': [genre['name'] for genre in film.get('genres', [])],
-            'rating': film['rating']['kp'] if film.get('rating') and film['rating'].get('kp') is not None and film['rating']['kp'] != 0 else 'Отсутствует',
-            'description': film.get('description') if film.get('description') and film['description'] is not None else 'Отсутствует',
-            'poster': film['poster']['url'] if film.get('poster') and film['poster'].get('url') and film['poster']['url'] is not None else 'Отсутствует'
-        })
+    return [parse_film_data(film) for film in data['docs']]
 
-    return total_films
-if __name__ == "__main__":
-    movie_data = deep_search('2.1 - 4', '1900 - 2000')
-    if movie_data:
-        print(json.dumps(movie_data, ensure_ascii=False, indent=2))
+
+
+
+# success, data, error = deep_search('2.0 - 6', '99 - 1000')
+# if success:
+#     print(success)
+#     print(error)
+# else:
+#     print(f"Ошибка: {error}")
