@@ -1,11 +1,8 @@
 import requests
 from typing import Dict, Any, List, Tuple
 
-# from config_data.config import API_TOKEN, SERVER_URL
+from config_data.config import API_TOKEN, SERVER_URL
 from typing import Callable
-BOT_TOKEN = '8528315371:AAF9PiqUBEhjgUTU9VpQbS6LL0LkARGGS4M'
-API_TOKEN = 'QR6BNFX-7YC4D2M-HWENZ72-SFJRKAH'
-SERVER_URL = 'https://api.poiskkino.dev'
 
 headers = {'X-API-KEY': API_TOKEN}
 
@@ -28,22 +25,15 @@ def try_except_decorator(func: Callable) -> Callable:
         try:
             result = func(*args, **kwargs)
             return True, result, None
+        
         except requests.exceptions.RequestException as e:
-            error_msg = f"Ошибка сети: {e}"
-            print(error_msg)
-            return False, None, error_msg
+            return False, None, f'Ошибка сети: {e}'
         except (KeyError, IndexError) as e:
-            error_msg = f"Ошибка данных: {e}"
-            print(error_msg)
-            return False, None, error_msg
+            return False, None, e
         except Exception as e:
-            error_msg = f"Ошибка: {e}"
-            print(error_msg)
-            return False, None, error_msg
+            return False, None, e
         except ValueError as e:
-            error_msg = f"{e}"
-            print(error_msg)
-            return False, None, error_msg
+            return False, None, e
     return wrapper
 
 
@@ -138,13 +128,3 @@ def deep_search(rating: str, budget: str, amount: int = 1) -> List[Dict[str, Any
         raise ValueError(f"Фильм с бюджетом {budget} и рейтингом {rating} не найден")
 
     return [parse_film_data(film) for film in data['docs']]
-
-
-
-
-# success, data, error = deep_search('2.0 - 6', '99 - 1000')
-# if success:
-#     print(success)
-#     print(error)
-# else:
-#     print(f"Ошибка: {error}")

@@ -1,14 +1,12 @@
 from loader import bot
 from telebot.types import Message, CallbackQuery
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Callable
 
 import api.python_requests as MyRequests
 from states.states import ApiTotalStates
 from keyboards.reset_btn import get_remove_btn, get_amount_btn
 
 from validation import DataValidator
-
-from typing import Callable
 
 validator = DataValidator()
 
@@ -32,7 +30,7 @@ def parse_film_data(film: Dict[str, Any]) -> str:
     """
 
 # Функция - менеджер для работы с состояниями
-def state_manager(chat_id: int, data_for_remember_name: str | List = None, data_for_remember_value: str | List = None) -> None:
+def state_manager(chat_id: int, data_for_remember_name: str | List = None, data_for_remember_value: str | List = None) -> bool:
     """
     Управляет состояниями и возвращает:
     - True: если все состояния обработаны и нужно выполнить финальный запрос
@@ -116,30 +114,28 @@ def show_message_budget(chat_id: int) -> None:
 def show_message_deep_search(chat_id: int) -> None:
     try:
         with bot.retrieve_data(chat_id) as data:
-
             success, movie_data, error = MyRequests.deep_search(data['rating'], data['budget'], data['cur_amount'])
 
-            if success and movie_data:
-                for index, el in enumerate(movie_data, start=1):
-                    if el is None:
-                        bot.send_message(chat_id, 'Фильмы, по вашему фильтру, закончились')
-                        break
-                    bot.send_message(chat_id, f'<b>{index}:</b> {parse_film_data(el)}', parse_mode='HTML')
-                
-                bot.delete_state(chat_id)
-                show_main_menu(chat_id)
-                return
+        if success and movie_data:
+            for index, el in enumerate(movie_data, start=1):
+                if el is None:
+                    bot.send_message(chat_id, 'Фильмы, по вашему фильтру, закончились')
+                    break
+                bot.send_message(chat_id, f'<b>{index}:</b> {parse_film_data(el)}', parse_mode='HTML')
             
-            bot.send_message(chat_id, error)
+            bot.delete_state(chat_id)
+            show_main_menu(chat_id)
+            return
+            
+        bot.send_message(chat_id, error)
         
     except Exception as e:
-
         bot.send_message(chat_id, 'Произошла непонятная ошибка')
 
 
-# Функции для обработки inline клавиатуры
+# Функция для обработки inline клавиатуры
 @bot.callback_query_handler(func=lambda call: call.data.startswith('first'))
-def handle_amount_button(call: CallbackQuery):
+def handle_amount_button(call: CallbackQuery) -> None:
     amount = call.data.split('_')
 
     bot.answer_callback_query(call.id)
@@ -159,6 +155,7 @@ def choosing_number_films(chat_id: int, name_states: list | str, name_funcs: lis
         data['name_states'] = [name_states] if not isinstance(name_states, list) else name_states
 
 
+# Состояние для выбора количества фильмов через обычную клавиатуру
 @bot.message_handler(state=ApiTotalStates.selecting_number_records)
 @decorator_check_reset
 def handler_selecting_number_records(message: Message) -> None:
@@ -170,8 +167,6 @@ def handler_selecting_number_records(message: Message) -> None:
     except ValueError:
         bot.send_message(message.from_user.id, 
                        'Пожалуйста, введите число или используйте кнопки.')
-
-
 
 # ===== Основной код бота =====
 
@@ -246,7 +241,7 @@ def hendler_movie_search_api(message: Message) -> None:
             with bot.retrieve_data(message.from_user.id) as data:
                 success, movie_data, error = MyRequests.get_movie_by_rating(message_text, data['cur_amount'])
             
-            if is_next_state and success and movie_data:
+            if success and movie_data:
                 bot.send_message(message.from_user.id, f'😉 Рейтинг фильмов с оценкой: {message_text}')
                 
                 for index, el in enumerate(movie_data, start=1):
@@ -272,6 +267,7 @@ def hendler_movie_search_api(message: Message) -> None:
 def handler_movie_by_budget(message: Message) -> None:
     choosing_number_films(message.from_user.id, 'movie_by_budget_api', 'show_message_budget')
 
+
 @bot.message_handler(state=ApiTotalStates.movie_by_budget_api)
 @decorator_check_reset
 def hendler_movie_search_api(message: Message) -> None:
@@ -287,28 +283,26 @@ def hendler_movie_search_api(message: Message) -> None:
             with bot.retrieve_data(message.from_user.id) as data:
                 success, movie_data, error = MyRequests.get_movie_by_budget(message_text, data['cur_amount'])
 
-            
-                if success and movie_data:
-                    bot.send_message(message.from_user.id, f'😁 Рейтинг фильмов с бюджетом: {message_text}')
+            if success and movie_data:
+                bot.send_message(message.from_user.id, f'😁 Рейтинг фильмов с бюджетом: {message_text}')
 
-                    for index, el in enumerate(movie_data, start=1):
-                        if el is None:
-                            bot.send_message(message.from_user.id, 'Фильмы, по вашему фильтру, закончились')
-                            break
-                        bot.send_message(message.from_user.id, f'<b>{index}:</b> {parse_film_data(el)}', parse_mode='HTML')
+                for index, el in enumerate(movie_data, start=1):
+                    if el is None:
+                        bot.send_message(message.from_user.id, 'Фильмы, по вашему фильтру, закончились')
+                        break
+                    bot.send_message(message.from_user.id, f'<b>{index}:</b> {parse_film_data(el)}', parse_mode='HTML')
 
-                    bot.delete_state(message.from_user.id)
-                    show_main_menu(message.from_user.id)
-                    return
-                else:
-                    bot.send_message(message.from_user.id, error)
+                bot.delete_state(message.from_user.id)
+                show_main_menu(message.from_user.id)
+                return
+
+            bot.send_message(message.from_user.id, error)
 
     except ValueError as e:
         bot.send_message(message.from_user.id, e)
     except Exception as e:
-        bot.send_message(message.from_user.id, 'Ошибка команды')
+        bot.send_message(message.from_user.id, 'Непонятная ошибка (')
     
-
 
 # Обработчик random_movie
 @bot.message_handler(commands=['random_movie'])
@@ -320,8 +314,9 @@ def handler_get_random_movie(message: Message) -> None:
         if success and movie_data:
             bot.send_message(message.from_user.id, f'Ваш рандомный тайтл\n{parse_film_data(movie_data)}', parse_mode='HTML')
             show_main_menu(message.from_user.id)
-        else:
-            bot.send_message(message.from_user.id, error)
+            return
+        
+        bot.send_message(message.from_user.id, error)
 
     except Exception as e:
         bot.send_message(message.from_user.id, 'Ошибка в работе команды')
@@ -330,7 +325,16 @@ def handler_get_random_movie(message: Message) -> None:
 # Обработчик deep_search
 @bot.message_handler(commands=['deep_search'])
 def handler_deep_search(message: Message) -> None:
-    choosing_number_films(message.from_user.id, ['movie_by_rating_api', 'movie_by_budget_api', 'deep_search_api'], ['show_message_raiting', 'show_message_budget', 'show_message_deep_search'])
+    choosing_number_films(message.from_user.id, [
+                                        'movie_by_rating_api',
+                                        'movie_by_budget_api',
+                                        'deep_search_api'
+                                        ],
+                                        [
+                                        'show_message_raiting',
+                                        'show_message_budget',
+                                        'show_message_deep_search'
+                                        ])
 
 
 @bot.message_handler(state=ApiTotalStates.deep_search_api)
