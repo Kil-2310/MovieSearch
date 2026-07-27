@@ -8,6 +8,7 @@ from keyboards.reset_btn import get_remove_btn, get_amount_btn
 
 from validation import DataValidator
 
+
 validator = DataValidator()
 
 # Обработчик данных фильма для дальнейшего показа пользователю

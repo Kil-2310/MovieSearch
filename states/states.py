@@ -1,5 +1,6 @@
 from telebot.handler_backends import State, StatesGroup
 
+
 class ApiTotalStates(StatesGroup):
     movie_search_api = State()
     movie_by_rating_api = State()

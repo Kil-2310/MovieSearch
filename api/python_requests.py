@@ -1,8 +1,9 @@
+from typing import Dict, Any, List, Tuple, Callable
+
 import requests
-from typing import Dict, Any, List, Tuple
 
 from config_data.config import API_TOKEN, SERVER_URL
-from typing import Callable
+
 
 headers = {'X-API-KEY': API_TOKEN}
 
